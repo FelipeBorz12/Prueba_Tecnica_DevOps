@@ -1,0 +1,154 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Plantilla de CloudFormation para crear una red básica y una instancia EC2 (Equivalente al ejercicio de Terraform)'
+
+Parameters:
+  KeyName:
+    Description: Nombre de un Key Pair existente para permitir acceso SSH
+    Type: AWS::EC2::KeyPair::KeyName
+    Default: mi-key-pair
+
+  InstanceType:
+    Description: Tipo de instancia EC2
+    Type: String
+    Default: t2.micro
+    AllowedValues: [t2.micro, t3.micro]
+    ConstraintDescription: Debe ser un tipo de instancia válido y apto para capa gratuita.
+
+Resources:
+  # 1. Crear la VPC
+  MyVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: vpc-cfn-practice
+        - Key: Environment
+          Value: practice
+
+  # 2. Crear la Subred Pública
+  MyPublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select [0, !GetAZs ''] # Toma la primera zona de disponibilidad disponible
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: subnet-public-cfn-practice
+        - Key: Environment
+          Value: practice
+
+  # 3. Crear el Internet Gateway
+  MyInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: igw-cfn-practice
+        - Key: Environment
+          Value: practice
+
+  # 4. Conectar el Internet Gateway a la VPC
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref MyVPC
+      InternetGatewayId: !Ref MyInternetGateway
+
+  # 5. Crear la Tabla de Ruteo Pública
+  MyRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref MyVPC
+      Tags:
+        - Key: Name
+          Value: rt-public-cfn-practice
+        - Key: Environment
+          Value: practice
+
+  # 6. Crear la Ruta por defecto hacia el Internet Gateway
+  DefaultRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref MyRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref MyInternetGateway
+
+  # 7. Asociar la Subred con la Tabla de Ruteo
+  SubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref MyPublicSubnet
+      RouteTableId: !Ref MyRouteTable
+
+  # 8. Crear el Security Group
+  MyWebSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Permite acceso HTTP, HTTPS y SSH
+      VpcId: !Ref MyVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: sg-web-cfn-practice
+        - Key: Environment
+          Value: practice
+
+  # 9. Crear la Instancia EC2 (Ubuntu 22.04 LTS)
+  MyEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      # AMI oficial de Ubuntu 22.04 LTS (HVM, SSD) para us-east-1.
+      # Nota: Si cambias de región, deberás actualizar esta AMI con la correspondiente a esa región.
+      ImageId: ami-0c7217cdde317cfec # Ubuntu 22.04 LTS en us-east-1
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: true
+          DeviceIndex: '0'
+          SubnetId: !Ref MyPublicSubnet
+          GroupSet:
+            - !Ref MyWebSecurityGroup
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          apt-get update -y
+          apt-get install -y nginx
+          systemctl start nginx
+          systemctl enable nginx
+          echo "<h1>Desplegado con CloudFormation por Felipe Botero</h1>" > /var/www/html/index.html
+      Tags:
+        - Key: Name
+          Value: server-web-cfn-practice
+        - Key: Environment
+          Value: practice
+
+Outputs:
+  VPCId:
+    Description: El ID de la VPC creada
+    Value: !Ref MyVPC
+
+  PublicIP:
+    Description: Dirección IP pública de la instancia EC2
+    Value: !GetAtt MyEC2Instance.PublicIp
+
+  PublicDNS:
+    Description: Nombre DNS público de la instancia EC2
+    Value: !GetAtt MyEC2Instance.PublicDns

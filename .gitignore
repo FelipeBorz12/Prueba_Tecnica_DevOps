@@ -1,0 +1,49 @@
+# =========================================================================
+# ARCHIVOS DE TERRAFORM
+# =========================================================================
+# Carpetas de inicialización de proveedores locales
+.terraform/
+
+# Archivo de bloqueo de dependencias (opcional de ignorar, pero recomendado en pruebas locales)
+.terraform.lock.hcl
+
+# Archivos de estado de infraestructura (¡MUY SENSITIVO, CONTIENE CONTRASENAS!)
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+
+# Archivos de definición de variables locales (pueden contener contraseñas/claves de AWS)
+*.tfvars
+*.tfvars.json
+
+# Archivos de configuración locales
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# =========================================================================
+# CLAVES SSH Y ARCHIVOS SENSITIVOS (.PEM, .KEY)
+# =========================================================================
+# Ignorar llaves privadas auto-generadas (como devops-practice-key.pem)
+*.pem
+*.key
+id_rsa
+id_rsa.pub
+
+# Archivos temporales o de variables de entorno de Docker/Node
+.env
+.env.*
+
+# =========================================================================
+# ARCHIVOS DE SISTEMA OPERATIVO Y LOGS
+# =========================================================================
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+node_modules/
