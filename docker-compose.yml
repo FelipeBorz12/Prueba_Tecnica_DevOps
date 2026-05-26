@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  # Servicio de la API Node.js
+  api:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - DATABASE_URL=postgresql://postgres:payfast_secure_pass@db:5432/payfast_db
+    depends_on:
+      db:
+        condition: service_healthy # Espera a que la BD esté saludable para levantar la API
+    networks:
+      - payfast_network
+
+  # Servicio de Base de Datos PostgreSQL
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=payfast_secure_pass
+      - POSTGRES_DB=payfast_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d payfast_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - payfast_network
+
+networks:
+  payfast_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
