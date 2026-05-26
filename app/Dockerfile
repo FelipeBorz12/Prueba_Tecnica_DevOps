@@ -9,7 +9,7 @@ WORKDIR /usr/src/app
 COPY package*.json ./
 
 # Instalar dependencias de producción de forma limpia
-RUN npm ci --only=production
+RUN npm install --omit=dev
 
 # =========================================================================
 # ETAPA 2: Imagen Final de Producción (Ligera y Segura)

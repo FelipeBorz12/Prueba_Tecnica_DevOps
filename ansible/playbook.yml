@@ -1,0 +1,72 @@
+---
+- name: Configurar Servidor de Producción EC2 para PayFast
+  hosts: app_servers
+  become: yes # Ejecutar como sudo en el servidor destino
+  vars:
+    docker_packages:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+      - software-properties-common
+
+  tasks:
+    # 1. Actualizar la caché del gestor de paquetes apt
+    - name: Actualizar repositorios apt
+      apt:
+        update_cache: yes
+        force_apt_get: yes
+
+    # 2. Instalar paquetes de requisitos previos para Docker
+    - name: Instalar paquetes pre-requisitos
+      apt:
+        name: "{{ docker_packages }}"
+        state: present
+
+    # 3. Importar la llave GPG oficial de Docker
+    - name: Agregar llave GPG oficial de Docker
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    # 4. Agregar el repositorio APT estable de Docker
+    - name: Agregar repositorio APT de Docker
+      apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+
+    # 5. Instalar Docker Engine y el plugin de Docker Compose
+    - name: Instalar Docker y Docker Compose
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+        update_cache: yes
+
+    # 6. Habilitar e iniciar el daemon de Docker
+    - name: Asegurar que Docker esté habilitado y corriendo
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    # 7. Añadir el usuario de ubuntu al grupo docker para poder ejecutar docker sin sudo
+    - name: Agregar usuario ubuntu al grupo docker
+      user:
+        name: ubuntu
+        groups: docker
+        append: yes
+
+    # 8. Crear la carpeta destino para desplegar el docker-compose.yml de la aplicación
+    - name: Crear directorio de la aplicacion
+      file:
+        path: /home/ubuntu/payfast-app
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'

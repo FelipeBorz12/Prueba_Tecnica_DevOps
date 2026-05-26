@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  # 1. Prometheus - Almacena las métricas recolectadas
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    container_name: prometheus_devops
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    ports:
+      - "9090:9090"
+    networks:
+      - payfast_network
+    restart: always
+
+  # 2. Grafana - Visualiza las métricas en tableros gráficos
+  grafana:
+    image: grafana/grafana:10.0.0
+    container_name: grafana_devops
+    ports:
+      - "3001:3000" # Mapeado al 3001 local para no chocar con el puerto 3000 de la API
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - payfast_network
+    restart: always
+
+  # 3. Node Exporter - Expone métricas de hardware del sistema host (CPU, memoria, disco)
+  node-exporter:
+    image: prom/node-exporter:v1.6.0
+    container_name: node_exporter_devops
+    ports:
+      - "9100:9100"
+    networks:
+      - payfast_network
+    restart: always
+
+networks:
+  payfast_network:
+    external: true # Se conecta a la red puente creada por la API principal
+
+volumes:
+  prometheus_data:
+  grafana_data:

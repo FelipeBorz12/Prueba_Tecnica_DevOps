@@ -7,7 +7,7 @@ services:
       context: ./app
       dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      - "3002:3000"
     environment:
       - PORT=3000
       - DATABASE_URL=postgresql://postgres:payfast_secure_pass@db:5432/payfast_db
